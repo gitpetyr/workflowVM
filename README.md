@@ -12,7 +12,7 @@
 accounts:
   - username: your-github-username
     token: ghp_YOUR_CLASSIC_PAT  # 需要 repo + workflow scope
-    runner_repo: your-username/wvm-runner
+    runner_repo: wvm-runner
     max_concurrent: 5
 
 server:
