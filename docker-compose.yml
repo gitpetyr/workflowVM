@@ -1,6 +1,6 @@
 services:
   workflowvm:
-    image: ghcr.io/OWNER/workflowvm:latest
+    image: ghcr.io/gitpetyr/workflowvm:latest
     ports:
       - "8765:8765"
     volumes:
