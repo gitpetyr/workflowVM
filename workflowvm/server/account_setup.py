@@ -94,6 +94,7 @@ async def setup_account(account: dict) -> SetupResult:
                         f"创建 repo 失败: {r2.status_code} {r2.text}"
                     )
                 repo_created = True
+                await asyncio.sleep(2)  # 等待 GitHub 完成 repo 初始化
             elif resp.status_code != 200:
                 return SetupResult(
                     username, runner_repo, "error",
