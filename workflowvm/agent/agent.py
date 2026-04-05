@@ -129,11 +129,12 @@ class Agent:
                         "resume": resumed,
                     })
                     await ws.send(hello)
-                    resumed = True
-                    retry_delay = 1.0
                     print(f"[agent] connected, session={self._session_id}")
 
                     async for raw in ws:
+                        # 首条消息收到才确认 session 已建立
+                        resumed = True
+                        retry_delay = 1.0
                         msg = json.loads(raw)
 
                         # 检查 max_duration
@@ -149,6 +150,10 @@ class Agent:
                             return
 
             except ConnectionClosed as e:
+                # 1008 = 服务器主动拒绝（token 无效或 session 已过期），无需重试
+                if e.rcvd and e.rcvd.code == 1008:
+                    print(f"[agent] rejected by server (1008): {e.rcvd.reason}, giving up.")
+                    return
                 print(f"[agent] disconnected: {e}, retrying in {retry_delay}s...")
             except OSError as e:
                 print(f"[agent] connection error: {e}, retrying in {retry_delay}s...")
