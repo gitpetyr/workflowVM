@@ -1,0 +1,35 @@
+name: WorkflowVM Agent
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "WorkflowVM server WebSocket URL"
+        required: true
+      session_token:
+        description: "Session token assigned by server"
+        required: true
+      max_duration:
+        description: "Max runtime in seconds"
+        required: false
+        default: "300"
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agent dependencies
+        run: pip install websockets
+
+      - name: Start WorkflowVM Agent
+        run: |
+          python agent/agent.py \
+            --server "${{ inputs.server_url }}" \
+            --token "${{ inputs.session_token }}" \
+            --duration "${{ inputs.max_duration }}"
