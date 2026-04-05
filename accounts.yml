@@ -1,0 +1,10 @@
+accounts:
+  - username: placeholder
+    token: ghp_REPLACE_ME
+    runner_repo: placeholder/wvm-runner
+    max_concurrent: 5
+
+server:
+  host: 0.0.0.0
+  port: 8765
+  api_token: "change-me-secret"
