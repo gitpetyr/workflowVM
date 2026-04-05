@@ -61,8 +61,8 @@ async def setup_account(account: dict) -> SetupResult:
     """
     token = account["token"]
     username = account["username"]
-    runner_repo = account["runner_repo"]
-    _, repo_name = runner_repo.split("/", 1)
+    repo_name = account["runner_repo"]
+    runner_repo = f"{username}/{repo_name}"
 
     headers = {
         "Authorization": f"Bearer {token}",

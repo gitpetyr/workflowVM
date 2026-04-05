@@ -38,7 +38,7 @@ class InstancePool:
 
         # 触发 workflow
         await api.dispatch_workflow(
-            repo=account["runner_repo"],
+            repo=f"{account['username']}/{account['runner_repo']}",
             server_url=self._server_ws_url,
             session_token=session_token,
             max_duration=max_duration,

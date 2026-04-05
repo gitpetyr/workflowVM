@@ -6,7 +6,7 @@ from workflowvm.server.account_setup import setup_account, setup_all_accounts, S
 ACCOUNT = {
     "username": "user1",
     "token": "ghp_test",
-    "runner_repo": "user1/wvm-runner",
+    "runner_repo": "wvm-runner",
     "max_concurrent": 5,
 }
 
@@ -91,8 +91,8 @@ async def test_invalid_pat_returns_error():
 async def test_setup_all_accounts_runs_concurrently():
     """setup_all_accounts 对多个账号都返回结果。"""
     accounts = [
-        {**ACCOUNT, "username": "u1", "runner_repo": "u1/r"},
-        {**ACCOUNT, "username": "u2", "runner_repo": "u2/r"},
+        {**ACCOUNT, "username": "u1", "runner_repo": "r"},
+        {**ACCOUNT, "username": "u2", "runner_repo": "r"},
     ]
 
     async def fake_setup(acc):

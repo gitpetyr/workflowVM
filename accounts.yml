@@ -1,7 +1,7 @@
 accounts:
   - username: placeholder
     token: ghp_REPLACE_ME
-    runner_repo: placeholder/wvm-runner
+    runner_repo: wvm-runner
     max_concurrent: 5
 
 server:
