@@ -86,6 +86,15 @@ async def main_async(config_path: str):
     port = int(srv_cfg.get("port", 8765))
     _api_token = srv_cfg.get("api_token", "")
 
+    from workflowvm.server.account_setup import setup_all_accounts
+    log.info("检查并初始化所有 runner repo...")
+    setup_results = await setup_all_accounts(account_pool._accounts)
+    for r in setup_results:
+        if r.status == "error":
+            log.warning(f"账号 {r.username} ({r.runner_repo}) 初始化失败: {r.message}")
+        else:
+            log.info(f"账号 {r.username} ({r.runner_repo}): {r.message}")
+
     session_mgr = SessionManager(reconnect_grace=60.0)
 
     ws_url = f"wss://{host}:{port}"
