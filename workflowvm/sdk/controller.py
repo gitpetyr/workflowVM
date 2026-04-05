@@ -1,8 +1,8 @@
 import asyncio
 import uuid
-from sdk.proxy import RemoteObject, _run
-from server.session_manager import SessionManager
-from server.instance_pool import InstancePool, AcquireTimeout
+from workflowvm.sdk.proxy import RemoteObject, _run
+from workflowvm.server.session_manager import SessionManager
+from workflowvm.server.instance_pool import InstancePool, AcquireTimeout
 
 
 class RemoteVM:
@@ -77,8 +77,8 @@ class Controller:
         token: str = "",
         acquire_timeout: float = 120.0,
     ):
-        from server.account_pool import AccountPool
-        from server.session_manager import SessionManager
+        from workflowvm.server.account_pool import AccountPool
+        from workflowvm.server.session_manager import SessionManager
 
         self._server_url = server_url
         self._api_token = token

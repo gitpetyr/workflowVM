@@ -10,9 +10,9 @@ import time
 import websockets
 from websockets.server import serve
 
-from server.session_manager import SessionManager
-from server.remote_object import RemoteObjectServer
-from sdk.proxy import RemoteObject
+from workflowvm.server.session_manager import SessionManager
+from workflowvm.server.remote_object import RemoteObjectServer
+from workflowvm.sdk.proxy import RemoteObject
 
 
 class LocalTestServer:
@@ -70,7 +70,7 @@ async def test_end_to_end_remote_object():
     fut = session_mgr.register_pending(session_token)
 
     # 在独立线程启动 agent（避免 event loop 冲突）
-    from agent.agent import Agent
+    from workflowvm.agent.agent import Agent
     agent = Agent(server_url, session_token, max_duration=30)
 
     agent_task = asyncio.create_task(agent.run())
@@ -86,7 +86,7 @@ async def test_end_to_end_remote_object():
     # obj_id=0 是 {} (空 dict)，getattr items 应返回 method ref
     items_ref = await robj.getattr(0, "items")
     # items 是 dict.items bound method，不可 JSON 序列化，应返回 RemoteRef
-    from server.protocol import RemoteRef
+    from workflowvm.server.protocol import RemoteRef
     assert isinstance(items_ref, RemoteRef)
 
     # 2. 调用 __import__ 获取 os 模块
@@ -134,14 +134,14 @@ async def test_remote_import_and_call():
     session_token = "test-import-token"
 
     fut = session_mgr.register_pending(session_token)
-    from agent.agent import Agent
+    from workflowvm.agent.agent import Agent
     agent = Agent(server_url, session_token, max_duration=30)
     agent_task = asyncio.create_task(agent.run())
 
     session = await asyncio.wait_for(fut, timeout=10.0)
     ws = session["ws"]
     robj = RemoteObjectServer(ws)
-    from server.protocol import RemoteRef
+    from workflowvm.server.protocol import RemoteRef
 
     # agent 根对象 obj_id=0 是 {} (dict)
     # 我们直接在 agent 的 objects[0] 中通过 setattr 放一个 __import__

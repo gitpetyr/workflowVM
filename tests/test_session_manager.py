@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from server.session_manager import SessionManager, SessionNotFound, SessionTimeout
+from workflowvm.server.session_manager import SessionManager, SessionNotFound, SessionTimeout
 
 @pytest.mark.asyncio
 async def test_register_and_connect():

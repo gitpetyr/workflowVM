@@ -2,8 +2,8 @@ import pytest
 import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock
-from server.remote_object import RemoteObjectServer, RemoteError
-from server.protocol import RemoteRef
+from workflowvm.server.remote_object import RemoteObjectServer, RemoteError
+from workflowvm.server.protocol import RemoteRef
 
 @pytest.fixture
 def mock_ws():

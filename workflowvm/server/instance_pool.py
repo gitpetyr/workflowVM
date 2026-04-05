@@ -1,9 +1,9 @@
 import asyncio
 import uuid
-from server.account_pool import AccountPool, NoAccountAvailable
-from server.github_api import GitHubAPI
-from server.session_manager import SessionManager
-from server.remote_object import RemoteObjectServer
+from workflowvm.server.account_pool import AccountPool, NoAccountAvailable
+from workflowvm.server.github_api import GitHubAPI
+from workflowvm.server.session_manager import SessionManager
+from workflowvm.server.remote_object import RemoteObjectServer
 
 
 class AcquireTimeout(Exception):

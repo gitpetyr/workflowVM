@@ -1,7 +1,7 @@
 import pytest
 import httpx
 from unittest.mock import AsyncMock, patch, MagicMock
-from server.github_api import GitHubAPI, WorkflowDispatchError
+from workflowvm.server.github_api import GitHubAPI, WorkflowDispatchError
 
 @pytest.mark.asyncio
 async def test_dispatch_workflow_success():

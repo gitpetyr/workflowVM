@@ -1,5 +1,5 @@
 import json
-from server.protocol import (
+from workflowvm.server.protocol import (
     encode_request, decode_response,
     OP_GETATTR, OP_CALL, OP_SETATTR, OP_GETITEM, OP_REPR, OP_DEL, OP_SHUTDOWN,
     RemoteRef, encode_value, decode_value,

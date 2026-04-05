@@ -12,9 +12,9 @@ import signal
 import websockets
 from websockets.server import serve
 
-from server.account_pool import AccountPool
-from server.session_manager import SessionManager
-from server.instance_pool import InstancePool
+from workflowvm.server.account_pool import AccountPool
+from workflowvm.server.session_manager import SessionManager
+from workflowvm.server.instance_pool import InstancePool
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("wvm.server")

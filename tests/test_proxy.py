@@ -1,9 +1,9 @@
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from server.protocol import RemoteRef
+from workflowvm.server.protocol import RemoteRef
 
-from sdk.proxy import RemoteObject
+from workflowvm.sdk.proxy import RemoteObject
 
 @pytest.fixture
 def mock_robj_server():

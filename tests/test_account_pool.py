@@ -2,7 +2,7 @@ import pytest
 import os
 import tempfile
 import yaml
-from server.account_pool import AccountPool, NoAccountAvailable
+from workflowvm.server.account_pool import AccountPool, NoAccountAvailable
 
 SAMPLE_CONFIG = {
     "accounts": [

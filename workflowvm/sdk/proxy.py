@@ -1,5 +1,5 @@
 import asyncio
-from server.protocol import RemoteRef
+from workflowvm.server.protocol import RemoteRef
 
 
 def _run(coro):
