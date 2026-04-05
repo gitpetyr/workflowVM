@@ -21,15 +21,30 @@ server:
   api_token: "your-server-api-token"
 ```
 
-### 2. 在 runner repo 中提交 workflow 文件
+### 2. 初始化 runner repo（自动）
 
-将 `.github/workflows/agent.yml` 提交到你的 runner repo（`runner_repo` 指定的仓库）。
+```bash
+workflowvm setup --config accounts.yml
+```
+
+`setup` 命令会自动为 accounts.yml 中的每个账号创建 runner repo（若不存在）并推送 workflow 文件。`workflowvm serve` 启动时也会自动执行此初始化。
 
 ### 3. 启动服务器
 
+**方式 A：直接安装运行**
+
 ```bash
-pip install -r requirements.txt
-python server/main.py --config accounts.yml
+pip install workflowvm
+workflowvm serve --config accounts.yml
+```
+
+**方式 B：Docker**
+
+```bash
+mkdir config
+cp accounts.yml config/
+# 将 docker-compose.yml 中的 OWNER 替换为你的 GitHub 用户名
+docker compose up -d
 ```
 
 ### 4. 使用 SDK
