@@ -1,7 +1,6 @@
 # WorkflowVM
 
 [![License](https://img.shields.io/github/license/gitpetyr/workflowVM)](https://github.com/gitpetyr/workflowVM/blob/main/LICENSE)
-[![Language](https://img.shields.io/github/languages/top/gitpetyr/workflowVM)](https://github.com/gitpetyr/workflowVM)
 [![Workflow Status](https://github.com/gitpetyr/workflowVM/actions/workflows/release.yml/badge.svg)](https://github.com/gitpetyr/workflowVM/actions)
 [![Release](https://img.shields.io/github/v/release/gitpetyr/workflowVM?label=Release)](https://github.com/gitpetyr/workflowVM/packages)
 [![PyPI version](https://img.shields.io/pypi/v/workflowvm.svg)](https://pypi.org/project/workflowvm/)
