@@ -20,7 +20,8 @@ class RemoteVM:
         self._root = RemoteObject(0, robj_server)
 
     def __getattr__(self, name: str):
-        if name.startswith("_"):
+        # 只拦截 Python 内部的 dunder（__xxx__），放行 __import__ 等有用名称
+        if name.startswith("__") and name.endswith("__"):
             raise AttributeError(name)
         return getattr(self._root, name)
 

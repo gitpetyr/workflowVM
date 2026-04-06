@@ -81,29 +81,22 @@ async def test_end_to_end_remote_object():
     robj = RemoteObjectServer(ws)
 
     # --- 测试远程对象操作 ---
-
-    # 1. getattr 根命名空间（dict）→ 应该返回 value 或 ref
-    # obj_id=0 是 {} (空 dict)，getattr items 应返回 method ref
-    items_ref = await robj.getattr(0, "items")
-    # items 是 dict.items bound method，不可 JSON 序列化，应返回 RemoteRef
     from workflowvm.server.protocol import RemoteRef
-    assert isinstance(items_ref, RemoteRef)
 
-    # 2. 调用 __import__ 获取 os 模块
-    # 先获取 agent 的 __import__ builtin
-    # obj_id=0 是 {}，我们直接在 agent 的 globals 中设置一个函数引用
-    # 用 setattr 注入 __import__
-    import_fn_ref = await robj.getattr(0, "get")  # {} 的 get 方法
-    assert isinstance(import_fn_ref, RemoteRef)
+    # 1. 获取 builtins 函数（open 是 builtin，不可序列化 → RemoteRef）
+    open_ref = await robj.getattr(0, "open")
+    assert isinstance(open_ref, RemoteRef)
 
-    # 3. repr 测试
-    repr_str = await robj.repr(0)
-    assert repr_str == "{}"
+    # 2. 获取 import_ 方法
+    import_ref = await robj.getattr(0, "import_")
+    assert isinstance(import_ref, RemoteRef)
 
-    # 4. setattr：在根 dict 中存一个 key（通过 setattr 操作 dict 本身不对，
-    #    但 agent 的根对象是 dict，setattr 会调用 setattr(dict_instance, name, val)
-    #    这对 dict 会失败，改用 getitem/call 模式）
-    # 直接测试 shutdown
+    # 3. setattr + getattr 往返测试
+    await robj.setattr(0, "test_val", 42)
+    val = await robj.getattr(0, "test_val")
+    assert val == 42
+
+    # 4. shutdown
     shutdown_result = await robj.shutdown()
     assert shutdown_result == "shutdown"
 
@@ -143,19 +136,16 @@ async def test_remote_import_and_call():
     robj = RemoteObjectServer(ws)
     from workflowvm.server.protocol import RemoteRef
 
-    # agent 根对象 obj_id=0 是 {} (dict)
-    # 我们直接在 agent 的 objects[0] 中通过 setattr 放一个 __import__
-    # 实际上 agent.__import__ 是 builtin，需要先在 agent 端注册
-    # 注入方式：通过 call 一个已有函数
-    # 先获取 dict.__class__ → type → 用来验证 getattr/call 链
+    # 通过 import_ 获取 os 模块
+    import_ref = await robj.getattr(0, "import_")
+    assert isinstance(import_ref, RemoteRef)
 
-    # 测试：获取 dict 的 __class__，确认是 dict type
-    class_ref = await robj.getattr(0, "__class__")
-    assert isinstance(class_ref, RemoteRef)
+    os_ref = await robj.call(import_ref.obj_id, ["os"], {})
+    assert isinstance(os_ref, RemoteRef)
 
-    # repr of __class__ 应该包含 "dict"
-    class_repr = await robj.repr(class_ref.obj_id)
-    assert "dict" in class_repr
+    # repr of os 应该包含 "module"
+    os_repr = await robj.repr(os_ref.obj_id)
+    assert "os" in os_repr
 
     await robj.shutdown()
     test_server.stop()

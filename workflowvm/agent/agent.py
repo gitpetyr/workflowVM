@@ -3,6 +3,7 @@
 WorkflowVM Agent - 在 GitHub Actions runner 上运行，反向 WebSocket 连接服务器。
 """
 import asyncio
+import builtins
 import json
 import sys
 import uuid
@@ -10,6 +11,26 @@ import argparse
 import time
 import traceback
 from typing import Any
+
+
+class _AgentRoot:
+    """
+    agent 根命名空间：支持自定义属性赋值，未找到时回退到 builtins。
+    提供 import_() 方法用于导入模块。
+    """
+    def __init__(self):
+        object.__setattr__(self, '_store', {
+            'import_': __import__,
+        })
+
+    def __getattr__(self, name: str):
+        store = object.__getattribute__(self, '_store')
+        if name in store:
+            return store[name]
+        return getattr(builtins, name)
+
+    def __setattr__(self, name: str, value):
+        object.__getattribute__(self, '_store')[name] = value
 
 try:
     import websockets
@@ -26,7 +47,7 @@ class Agent:
         self._max_duration = max_duration
         self._session_id = str(uuid.uuid4())
         # obj_id=0 是根命名空间
-        self._objects: dict[int, Any] = {0: {}}
+        self._objects: dict[int, Any] = {0: _AgentRoot()}
         self._next_id = 1
         self._start_time = time.monotonic()
 
