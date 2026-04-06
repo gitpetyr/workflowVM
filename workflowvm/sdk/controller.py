@@ -52,6 +52,10 @@ class RemoteVM:
         except Exception:
             pass
         try:
+            _run(self._robj.stop())
+        except Exception:
+            pass
+        try:
             _run(self._ws.close())
         except Exception:
             pass
@@ -118,6 +122,7 @@ class Controller:
                 if msg["type"] == "acquired":
                     session_id = msg["session_id"]
                     robj = RemoteObjectServer(ws)
+                    robj.start(heartbeat_interval=15.0)  # 启动心跳，每 15s 发一次
                     return RemoteVM(session_id, robj, ws)
                 raise RuntimeError(f"Unexpected server message: {msg}")
         except Exception:

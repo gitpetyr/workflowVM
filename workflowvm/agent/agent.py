@@ -102,6 +102,9 @@ class Agent:
             elif op == "shutdown":
                 return {"id": req_id, "type": "value", "val": "shutdown"}
 
+            elif op == "ping":
+                return {"id": req_id, "type": "value", "val": "pong"}
+
             else:
                 return {"id": req_id, "type": "error", "exc": "UnknownOp", "msg": f"Unknown op: {op}"}
 

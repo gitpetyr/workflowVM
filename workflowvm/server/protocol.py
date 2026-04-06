@@ -9,6 +9,7 @@ OP_GETITEM  = "getitem"
 OP_REPR     = "repr"
 OP_DEL      = "del"
 OP_SHUTDOWN = "shutdown"
+OP_PING     = "ping"
 
 # Response type 常量
 TYPE_REF   = "ref"
