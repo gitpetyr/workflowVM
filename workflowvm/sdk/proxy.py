@@ -1,20 +1,19 @@
 import asyncio
+import threading
 from workflowvm.server.protocol import RemoteRef
+
+# 全局后台 event loop，持续运行在独立线程中。
+# WebSocket ping/pong、keepalive 等都在此 loop 中自动处理，
+# 不受主线程（REPL/同步代码）是否阻塞的影响。
+_bg_loop = asyncio.new_event_loop()
+_bg_thread = threading.Thread(target=_bg_loop.run_forever, daemon=True, name="wvm-io")
+_bg_thread.start()
 
 
 def _run(coro):
-    """在当前或新 event loop 中同步运行协程。"""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # 在已运行的 loop 中（如 Jupyter），用 concurrent.futures
-            import concurrent.futures
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            return future.result(timeout=60)
-        else:
-            return loop.run_until_complete(coro)
-    except RuntimeError:
-        return asyncio.run(coro)
+    """将协程提交到后台 loop 并同步等待结果。"""
+    future = asyncio.run_coroutine_threadsafe(coro, _bg_loop)
+    return future.result()
 
 
 class RemoteObject:
