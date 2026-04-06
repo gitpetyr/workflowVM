@@ -16,6 +16,12 @@ class RemoteError(Exception):
         self.remote_msg = msg
         self.tb = tb
 
+    def __str__(self):
+        base = super().__str__()
+        if self.tb:
+            return f"{base}\n--- Remote Traceback ---\n{self.tb}"
+        return base
+
 
 class RemoteObjectServer:
     """
