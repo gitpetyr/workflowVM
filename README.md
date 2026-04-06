@@ -2,7 +2,7 @@
 
 # WorkflowVM
 
-**将 GitHub Actions 免费 Ubuntu Runner 化身为可调度的云端 Python 沙盒**
+**将 GitHub Actions 化为可调度的云端 Python 沙盒**
 
 [![License](https://img.shields.io/github/license/gitpetyr/workflowVM?color=blue)](https://github.com/gitpetyr/workflowVM/blob/main/LICENSE)
 [![Workflow Status](https://github.com/gitpetyr/workflowVM/actions/workflows/release.yml/badge.svg)](https://github.com/gitpetyr/workflowVM/actions)
