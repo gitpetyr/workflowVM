@@ -1,8 +1,10 @@
 import asyncio
-import uuid
+import json
+
+import websockets
+
 from workflowvm.sdk.proxy import RemoteObject, _run
-from workflowvm.server.session_manager import SessionManager
-from workflowvm.server.instance_pool import InstancePool, AcquireTimeout
+from workflowvm.server.remote_object import RemoteObjectServer
 
 
 class RemoteVM:
@@ -11,10 +13,10 @@ class RemoteVM:
     根对象 obj_id=0 即 workflow 的运行时命名空间。
     """
 
-    def __init__(self, session_id: str, robj_server, instance_pool: "InstancePool"):
+    def __init__(self, session_id: str, robj_server: RemoteObjectServer, ws):
         self._session_id = session_id
         self._robj = robj_server
-        self._pool = instance_pool
+        self._ws = ws
         self._root = RemoteObject(0, robj_server)
 
     def __getattr__(self, name: str):
@@ -48,7 +50,10 @@ class RemoteVM:
             _run(self._robj.shutdown())
         except Exception:
             pass
-        self._pool.release(self._session_id)
+        try:
+            _run(self._ws.close())
+        except Exception:
+            pass
 
     def __enter__(self):
         return self
@@ -57,9 +62,13 @@ class RemoteVM:
         self.release()
 
 
+class AcquireTimeout(Exception):
+    pass
+
+
 class Controller:
     """
-    WorkflowVM 控制器。管理账号池和实例池，提供 acquire() 接口。
+    WorkflowVM 远程控制器。连接服务器，触发 GitHub Actions runner。
 
     用法：
         ctrl = Controller("wss://your-server:8765", token="api-token")
@@ -73,33 +82,46 @@ class Controller:
         self,
         server_url: str,
         *,
-        config_path: str = "accounts.yml",
         token: str = "",
         acquire_timeout: float = 120.0,
+        config_path: str = None,  # 保留兼容旧用法，不再使用
     ):
-        from workflowvm.server.account_pool import AccountPool
-        from workflowvm.server.session_manager import SessionManager
-
         self._server_url = server_url
-        self._api_token = token
-        self._account_pool = AccountPool(config_path)
-        self._session_mgr = SessionManager(reconnect_grace=60.0)
-        self._instance_pool = InstancePool(
-            account_pool=self._account_pool,
-            session_manager=self._session_mgr,
-            server_ws_url=server_url,
-            acquire_timeout=acquire_timeout,
-        )
+        self._token = token
+        self._acquire_timeout = acquire_timeout
 
-    def acquire(self, timeout: float = 120.0, max_duration: int = 300) -> RemoteVM:
+    def acquire(self, timeout: float = None, max_duration: int = 300) -> RemoteVM:
         """
-        分配一个 workflow 实例并等待其连接。
+        向服务器请求分配一个 workflow 实例并等待其连接。
         返回 RemoteVM，可直接操作远程 Python 环境。
         """
-        self._instance_pool._acquire_timeout = timeout
+        t = timeout if timeout is not None else self._acquire_timeout
+        return _run(self._acquire_async(t, max_duration))
 
-        async def _acquire():
-            session_id, robj = await self._instance_pool.acquire(max_duration=max_duration)
-            return RemoteVM(session_id, robj, self._instance_pool)
+    async def _acquire_async(self, timeout: float, max_duration: int) -> RemoteVM:
+        headers = {"X-Api-Token": self._token}
+        ws = await websockets.connect(self._server_url, additional_headers=headers)
+        try:
+            await ws.send(json.dumps({"type": "acquire", "max_duration": max_duration}))
 
-        return _run(_acquire())
+            # 等待服务器响应（acquiring → acquired）
+            deadline = asyncio.get_event_loop().time() + timeout
+            while True:
+                remaining = deadline - asyncio.get_event_loop().time()
+                if remaining <= 0:
+                    raise AcquireTimeout("Timed out waiting for agent to connect")
+                raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+                msg = json.loads(raw)
+                if msg["type"] == "acquiring":
+                    continue
+                if msg["type"] == "acquired":
+                    session_id = msg["session_id"]
+                    robj = RemoteObjectServer(ws)
+                    return RemoteVM(session_id, robj, ws)
+                raise RuntimeError(f"Unexpected server message: {msg}")
+        except Exception:
+            try:
+                await ws.close()
+            except Exception:
+                pass
+            raise

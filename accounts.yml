@@ -8,3 +8,4 @@ server:
   host: 0.0.0.0
   port: 8765
   api_token: "change-me-secret"
+  # ws_url: "wss://your-domain.com"  # agent 反连地址，有反代时配置；默认 ws://host:port
