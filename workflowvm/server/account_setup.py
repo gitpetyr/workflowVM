@@ -128,7 +128,28 @@ async def setup_account(account: dict) -> SetupResult:
                 return SetupResult(username, runner_repo, "workflow_added", "已推送 workflow 文件")
 
             if resp.status_code == 200:
-                return SetupResult(username, runner_repo, "ready", "已就绪")
+                # 比较内容，内容有变则更新
+                file_info = resp.json()
+                remote_content = base64.b64decode(file_info["content"].replace("\n", "")).decode()
+                if remote_content == _AGENT_YML:
+                    return SetupResult(username, runner_repo, "ready", "已就绪")
+                content_b64 = base64.b64encode(_AGENT_YML.encode()).decode()
+                body = {
+                    "message": "Update WorkflowVM agent workflow",
+                    "content": content_b64,
+                    "sha": file_info["sha"],
+                }
+                r2 = await client.put(
+                    f"{_GITHUB_API}/repos/{runner_repo}/contents/{workflow_path}",
+                    headers=headers,
+                    json=body,
+                )
+                if r2.status_code != 200:
+                    return SetupResult(
+                        username, runner_repo, "error",
+                        f"更新 workflow 失败: {r2.status_code}"
+                    )
+                return SetupResult(username, runner_repo, "updated", "workflow 已更新")
             return SetupResult(
                 username, runner_repo, "error",
                 f"GET workflow 失败: {resp.status_code}"

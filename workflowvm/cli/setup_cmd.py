@@ -8,6 +8,7 @@ _STATUS_ICON = {
     "ready": "✓",
     "created": "✓",
     "workflow_added": "✓",
+    "updated": "↑",
     "error": "✗",
 }
 

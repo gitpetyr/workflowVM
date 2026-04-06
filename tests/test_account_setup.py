@@ -1,7 +1,7 @@
 import pytest
 import base64
 from unittest.mock import AsyncMock, MagicMock, patch
-from workflowvm.server.account_setup import setup_account, setup_all_accounts, SetupResult
+from workflowvm.server.account_setup import setup_account, setup_all_accounts, SetupResult, _AGENT_YML
 
 ACCOUNT = {
     "username": "user1",
@@ -30,19 +30,43 @@ def _make_client(responses: list):
     return client
 
 
+def _workflow_resp(content: str = None):
+    """返回 workflow 文件已存在的 mock 响应，content 默认为当前模板。"""
+    body = content if content is not None else _AGENT_YML
+    return _make_resp(200, json_data={
+        "content": base64.b64encode(body.encode()).decode(),
+        "sha": "abc123",
+    })
+
+
 @pytest.mark.asyncio
 async def test_all_exists_returns_ready():
-    """repo 已存在，workflow 已存在 → status=ready，不调用 POST/PUT。"""
+    """repo 已存在，workflow 内容与模板相同 → status=ready，不调用 POST/PUT。"""
     client = _make_client([
-        _make_resp(200),  # GET /user
-        _make_resp(200),  # GET /repos/user1/wvm-runner
-        _make_resp(200),  # GET workflow file
+        _make_resp(200),      # GET /user
+        _make_resp(200),      # GET /repos/user1/wvm-runner
+        _workflow_resp(),     # GET workflow file（内容与模板一致）
     ])
     with patch("workflowvm.server.account_setup.httpx.AsyncClient", return_value=client):
         result = await setup_account(ACCOUNT)
     assert result.status == "ready"
     client.post.assert_not_called()
     client.put.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_workflow_outdated_updates_file():
+    """workflow 内容与模板不同 → PUT 更新，status=updated。"""
+    client = _make_client([
+        _make_resp(200),                        # GET /user
+        _make_resp(200),                        # GET /repos
+        _workflow_resp("outdated content\n"),   # GET workflow（内容不同）
+    ])
+    client.put = AsyncMock(return_value=_make_resp(200))  # 更新文件返回 200
+    with patch("workflowvm.server.account_setup.httpx.AsyncClient", return_value=client):
+        result = await setup_account(ACCOUNT)
+    assert result.status == "updated"
+    client.put.assert_called_once()
 
 
 @pytest.mark.asyncio
