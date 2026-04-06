@@ -13,6 +13,9 @@
 [![Docker Image size](https://ghcr-badge.egpl.dev/gitpetyr/workflowvm/size?color=%2344cc11&tag=latest&label=image+size&trim=)](https://github.com/gitpetyr/workflowVM/pkgs/container/workflowvm)
 [![Last Commit](https://img.shields.io/github/last-commit/gitpetyr/workflowvm)](https://github.com/gitpetyr/workflowvm/commits/main)
 
+
+[![LINUX DO](https://img.shields.io/badge/LINUX%20DO-Community-blue)](https://linux.do)
+
 </div>
 
 <br/>
@@ -140,6 +143,10 @@ SDK (调用方)
 | `workflowvm-agent --server <url> --token <tok> --duration <sec>` | 在 Runner 内运行 Agent（通常由 GitHub Workflow 自动执行，无需手动调用） |
 
 ---
+
+## Linux DO
+
+[![LINUX DO](https://img.shields.io/badge/LINUX%20DO-Community-blue)](https://linux.do)
 
 ## 测试
 
