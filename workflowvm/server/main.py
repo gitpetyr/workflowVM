@@ -121,22 +121,35 @@ async def _handle_sdk_client(ws):
     await ws.send(json.dumps({"type": "acquired", "session_id": session_id}))
     log.info(f"SDK client acquired session={session_id}")
 
-    # 透明代理双向消息
-    async def forward(src, dst, label):
+    # 透明代理：任意一端断开时主动关闭另一端
+    async def sdk_to_agent():
         try:
-            async for data in src:
-                await dst.send(data)
+            async for data in ws:
+                await agent_ws.send(data)
         except Exception:
             pass
         finally:
-            log.debug(f"{label} forwarding ended")
+            # SDK 断开 → 通知 agent 退出（1008 使 agent 不重试）
+            try:
+                await agent_ws.close(1008, "SDK client disconnected")
+            except Exception:
+                pass
+
+    async def agent_to_sdk():
+        try:
+            async for data in agent_ws:
+                await ws.send(data)
+        except Exception:
+            pass
+        finally:
+            # agent 断开 → 关闭 SDK 连接
+            try:
+                await ws.close(1001, "agent disconnected")
+            except Exception:
+                pass
 
     try:
-        await asyncio.gather(
-            forward(ws, agent_ws, "sdk→agent"),
-            forward(agent_ws, ws, "agent→sdk"),
-            return_exceptions=True,
-        )
+        await asyncio.gather(sdk_to_agent(), agent_to_sdk(), return_exceptions=True)
     finally:
         account_pool.release(account["username"])
         session_mgr.release(session_id)
