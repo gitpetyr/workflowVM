@@ -1,4 +1,3 @@
-from workflowvm.sdk.controller import Controller, RemoteVM
-from workflowvm.sdk.proxy import RemoteObject
+from workflowvm.sdk.controller import Controller
 
-__all__ = ["Controller", "RemoteVM", "RemoteObject"]
+__all__ = ["Controller"]

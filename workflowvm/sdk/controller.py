@@ -1,74 +1,15 @@
 import asyncio
 import json
+import threading
 
 import websockets
+import rpyc
 
-from workflowvm.sdk.proxy import RemoteObject, _run
-from workflowvm.server.remote_object import RemoteObjectServer
+from workflowvm.sdk.stream import WebSocketStream, feed_loop
 
-
-class RemoteVM:
-    """
-    代表一个活跃的 workflow 实例。
-    根对象 obj_id=0 即 workflow 的运行时命名空间。
-    """
-
-    def __init__(self, session_id: str, robj_server: RemoteObjectServer, ws):
-        self._session_id = session_id
-        self._robj = robj_server
-        self._ws = ws
-        self._root = RemoteObject(0, robj_server)
-
-    def __getattr__(self, name: str):
-        # 只拦截 Python 内部的 dunder（__xxx__），放行 __import__ 等有用名称
-        if name.startswith("__") and name.endswith("__"):
-            raise AttributeError(name)
-        return getattr(self._root, name)
-
-    def __setattr__(self, name: str, value):
-        if name.startswith("_"):
-            object.__setattr__(self, name, value)
-            return
-        setattr(self._root, name, value)
-
-    def __call__(self, *args, **kwargs):
-        return self._root(*args, **kwargs)
-
-    def __getitem__(self, key):
-        return self._root[key]
-
-    def _repr(self, obj=None) -> str:
-        """获取远程对象 repr。obj 为 None 时获取根对象 repr。"""
-        if obj is None:
-            return self._root._repr()
-        if isinstance(obj, RemoteObject):
-            return obj._repr()
-        return repr(obj)
-
-    def release(self):
-        """关闭 session，workflow 退出。"""
-        try:
-            _run(self._robj.shutdown())
-        except Exception:
-            pass
-        try:
-            _run(self._robj.stop())
-        except Exception:
-            pass
-        try:
-            _run(self._ws.close())
-        except Exception:
-            pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.release()
-
-
-class AcquireTimeout(Exception):
-    pass
+# 持续运行的后台 event loop，处理 WebSocket I/O（ping/pong、send、feed）
+_bg_loop = asyncio.new_event_loop()
+threading.Thread(target=_bg_loop.run_forever, daemon=True, name="wvm-io").start()
 
 
 class Controller:
@@ -77,10 +18,12 @@ class Controller:
 
     用法：
         ctrl = Controller("wss://your-server:8765", token="api-token")
-        vm = ctrl.acquire(timeout=120, max_duration=300)
-        vm.os = vm.__import__("os")
-        vm.os.system("whoami")
-        vm.release()
+        conn = ctrl.acquire()          # 返回 rpyc.Connection
+
+        os = conn.modules.os
+        os.system("whoami")
+
+        conn.close()
     """
 
     def __init__(
@@ -89,42 +32,51 @@ class Controller:
         *,
         token: str = "",
         acquire_timeout: float = 120.0,
-        config_path: str = None,  # 保留兼容旧用法，不再使用
     ):
         self._server_url = server_url
         self._token = token
         self._acquire_timeout = acquire_timeout
 
-    def acquire(self, timeout: float = None, max_duration: int = 300) -> RemoteVM:
+    def acquire(self, timeout: float = None, max_duration: int = 300) -> rpyc.Connection:
         """
         向服务器请求分配一个 workflow 实例并等待其连接。
-        返回 RemoteVM，可直接操作远程 Python 环境。
+        返回 rpyc.Connection，可通过 conn.modules.xxx 透明访问远端 Python 环境。
         """
         t = timeout if timeout is not None else self._acquire_timeout
-        return _run(self._acquire_async(t, max_duration))
+        future = asyncio.run_coroutine_threadsafe(
+            self._acquire_async(t, max_duration),
+            _bg_loop,
+        )
+        return future.result(timeout=t + 30)
 
-    async def _acquire_async(self, timeout: float, max_duration: int) -> RemoteVM:
+    async def _acquire_async(self, timeout: float, max_duration: int) -> rpyc.Connection:
         headers = {"X-Api-Token": self._token}
         ws = await websockets.connect(self._server_url, additional_headers=headers)
         try:
             await ws.send(json.dumps({"type": "acquire", "max_duration": max_duration}))
 
             # 等待服务器响应（acquiring → acquired）
-            deadline = asyncio.get_event_loop().time() + timeout
+            deadline = asyncio.get_running_loop().time() + timeout
             while True:
-                remaining = deadline - asyncio.get_event_loop().time()
+                remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
-                    raise AcquireTimeout("Timed out waiting for agent to connect")
+                    raise TimeoutError("Timed out waiting for agent to connect")
                 raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
                 msg = json.loads(raw)
                 if msg["type"] == "acquiring":
                     continue
                 if msg["type"] == "acquired":
-                    session_id = msg["session_id"]
-                    robj = RemoteObjectServer(ws)
-                    robj.start(heartbeat_interval=15.0)  # 启动心跳，每 15s 发一次
-                    return RemoteVM(session_id, robj, ws)
+                    break
                 raise RuntimeError(f"Unexpected server message: {msg}")
+
+            loop = asyncio.get_running_loop()
+            stream = WebSocketStream(ws, loop)
+            feed_task = asyncio.create_task(feed_loop(ws, stream))
+            conn = await asyncio.to_thread(rpyc.classic.connect_stream, stream)
+            conn._feed_task = feed_task
+            conn._ws = ws
+            return conn
+
         except Exception:
             try:
                 await ws.close()

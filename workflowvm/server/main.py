@@ -4,6 +4,7 @@ WorkflowVM Server - asyncio WebSocket server
 启动：workflowvm serve --config accounts.yml
 """
 import asyncio
+import contextlib
 import json
 import uuid
 import argparse
@@ -118,38 +119,26 @@ async def _handle_sdk_client(ws):
     session_id = session["session_id"]
     agent_ws = session["ws"]
 
-    await ws.send(json.dumps({"type": "acquired", "session_id": session_id}))
+    await ws.send(json.dumps({"type": "acquired"}))
     log.info(f"SDK client acquired session={session_id}")
 
-    # 透明代理：任意一端断开时主动关闭另一端
-    async def sdk_to_agent():
+    # 纯字节隧道：任意一端断开时关闭另一端
+    async def forward(src, dst):
         try:
-            async for data in ws:
-                await agent_ws.send(data)
+            async for msg in src:
+                await dst.send(msg)
         except Exception:
             pass
         finally:
-            # SDK 断开 → 通知 agent 退出（1008 使 agent 不重试）
-            try:
-                await agent_ws.close(1008, "SDK client disconnected")
-            except Exception:
-                pass
-
-    async def agent_to_sdk():
-        try:
-            async for data in agent_ws:
-                await ws.send(data)
-        except Exception:
-            pass
-        finally:
-            # agent 断开 → 关闭 SDK 连接
-            try:
-                await ws.close(1001, "agent disconnected")
-            except Exception:
-                pass
+            with contextlib.suppress(Exception):
+                await dst.close(1001, "peer disconnected")
 
     try:
-        await asyncio.gather(sdk_to_agent(), agent_to_sdk(), return_exceptions=True)
+        await asyncio.gather(
+            forward(ws, agent_ws),
+            forward(agent_ws, ws),
+            return_exceptions=True,
+        )
     finally:
         account_pool.release(account["username"])
         session_mgr.release(session_id)
