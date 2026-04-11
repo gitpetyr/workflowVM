@@ -6,6 +6,7 @@ WorkflowVM Agent - 在 GitHub Actions runner 上运行，反向 WebSocket 连接
 import asyncio
 import json
 import sys
+import threading
 import uuid
 import argparse
 import time
@@ -60,11 +61,15 @@ class Agent:
                     stream = WebSocketStream(ws, loop)
                     feed_task = asyncio.create_task(feed_loop(ws, stream))
 
+                    done_future = loop.create_future()
+
                     def serve():
                         conn = rpyc.classic.connect_stream(stream)
                         conn.serve_all()
+                        loop.call_soon_threadsafe(done_future.set_result, None)
 
-                    await asyncio.to_thread(serve)
+                    threading.Thread(target=serve, daemon=True).start()
+                    await done_future
                     feed_task.cancel()
 
             except ConnectionClosed as e:
