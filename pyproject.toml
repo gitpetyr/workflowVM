@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "workflowvm"
-version = "0.3.2"
+version = "0.3.3"
 description = "GitHub Actions runner as a schedulable Python sandbox via WebSocket remote objects"
 readme = "README.md"
 license = "MIT"
